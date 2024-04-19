@@ -143,17 +143,17 @@ export const updateBooking = async (request, response) => {
       terms_and_conditions,
       group_leader_policy,
       bookingMonth,
-      request.params.id,
+      request.params.bookingId,
     ];
 
     const result = await pool.query(query, values);
 
     console.log(
-      `Booking updated with ID: ${result.rows[0].id} in ${bookingMonth}`
+      `Booking updated with ID: ${result.rows[0].bookingId} in ${bookingMonth}`
     );
     response
       .status(201)
-      .json({ message: `Booking updated with ID: ${result.rows[0].id}` });
+      .json({ message: `Booking updated with ID: ${result.rows[0].bookingId}` });
   } catch (error) {
     console.error("Error updating booking:", error);
     response

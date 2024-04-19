@@ -1,7 +1,7 @@
 // volunteerService.js
-import pool from './dbConfig';
+import pool from '../dbConfig.js';
 
-export const addVolunteer = async (volunteerData) => {
+export const addVolunteers = async (request, response) => {
     const {
         first_name,
         surname,
@@ -46,7 +46,7 @@ export const addVolunteer = async (volunteerData) => {
 
 }
 
-export const getAllVolunteers = async () => {
+export const getAllVolunteers = async (request, response) => {
     pool.query('SELECT * FROM volunteers ORDER BY id ASC', (error, results) => {
         if (error) {
             throw error;
@@ -55,7 +55,7 @@ export const getAllVolunteers = async () => {
     });
 }
 
-export const updateVolunteer = async (volunteerData) => {
+export const updateVolunteer = async (request, response) => {
     const {
         first_name,
         surname,
@@ -87,20 +87,20 @@ export const updateVolunteer = async (volunteerData) => {
             postcode,
             role,
             notes,
-            request.params.id,
+            request.params.volunteerId,
         ];
 
         const result = await pool.query(query, values);
 
-        console.log(`Volunteer updated with ID: ${result.rows[0].id}`);
-        response.status(201).json({ message: `Volunteer updated with ID: ${result.rows[0].id}` });
+        console.log(`Volunteer updated with ID: ${result.rows[0].volunteerId}`);
+        response.status(201).json({ message: `Volunteer updated with ID: ${result.rows[0].volunteerId}` });
     } catch (error) {
         console.error("Error updating volunteer:", error);
         response.status(500).json({ error: "Internal Server Error try again and call Ade if not working" });
     }
 }
 
-export const deleteVolunteer = async (volunteerData) => {       
+export const deleteVolunteer = async (request, response) => {       
     const { volunteerId } = request.params;
 
     try {
@@ -121,7 +121,7 @@ export const deleteVolunteer = async (volunteerData) => {
     }
 }
 
-export const getVolunteerById = async (volunteerData) => {
+export const getVolunteerById = async (request, response) => {
     const { volunteerId } = request.params;
     console.log("id", volunteerId);
     try {
@@ -139,4 +139,5 @@ export const getVolunteerById = async (volunteerData) => {
         console.error("Error finding volunteer:", error);
         response.status(500).json({ error: "Internal Server Error try again and call Ade if not working" });
     }
-}
+};
+
