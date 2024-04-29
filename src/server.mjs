@@ -6,29 +6,72 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import multer from "multer";
-
 import bodyParser from 'body-parser';
 
+
+
 // Set up storage options with Multer
+
+// Old storage options
+// const storage = multer.diskStorage({
+//   destination: function(req, file, cb) {
+//       const uploadsPath = path.join(__dirname, 'uploads/');
+//       // Ensure the directory exists
+//       if (!fs.existsSync(uploadsPath)) {
+//           fs.mkdirSync(uploadsPath, { recursive: true });
+//           console.log(`Created directory at: ${uploadsPath}`);
+//       }
+//       cb(null, uploadsPath);
+//   },
+//   filename: function(req, file, cb) {
+//       cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+//   }
+// });
+
+const fileNameMapping = {
+  groupLeaderPolicy: 'Group-Leader-Policy', //works
+  TCs: 'Terms-and-Conditions', //works
+  boatBrochure: 'Boat-Brochure',//works
+  riskAssessments: 'Risk-Assessment',//works
+  HagPoster: 'HAG-Poster',//works
+  bookingConditions: 'Booking-Conditions',//works
+  insuranceCertificate: 'Insurance-Certificate',//works
+};
+
+
 const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-      const uploadsPath = path.join(__dirname, 'uploads/');
-      // Ensure the directory exists
-      if (!fs.existsSync(uploadsPath)) {
-          fs.mkdirSync(uploadsPath, { recursive: true });
-          console.log(`Created directory at: ${uploadsPath}`);
-      }
-      cb(null, uploadsPath);
+  destination: function (req, file, cb) {
+    let uploadsPath = path.join(__dirname, 'uploads', 'docs'); // Default to docs
+
+    if (file.mimetype.startsWith('image/') && req.body.fileType === 'galleryImages') {
+      uploadsPath = path.join(__dirname, 'uploads', 'gallery');
+    } else if (req.body.fileType && fileNameMapping[req.body.fileType]) {
+      // Use docs path but different naming logic in filename function
+    }
+
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    }
+
+    cb(null, uploadsPath);
   },
-  filename: function(req, file, cb) {
-      cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  filename: function (req, file, cb) {
+    const fileType = req.body.fileType;
+    const defaultName = 'GenericFile';
+    const fileExtension = path.extname(file.originalname);
+
+    // Use the mapping to get the right name, or use a generic name
+    const baseName = fileNameMapping[fileType] || defaultName;
+    const fileName = `${baseName}${fileExtension}`;
+
+    cb(null, fileName);
   }
 });
 
-
+const upload = multer({ storage: storage });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, 'uploads');
-const upload = multer({ storage: storage });  // Use the custom storage configuration
+
 
 
 // Check if the uploads directory exists, and create it if it doesn't
@@ -39,11 +82,6 @@ if (!fs.existsSync(uploadsDir)) {
 
 const app = express();
 const port = 3000;
-
-
-
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 
 // Import bookingServices
 import { 
@@ -71,11 +109,17 @@ import {
   getNewsById,
   deleteNews,
   getLatestNews,
+  updateNews
 } from './services/newsServices.js';
 
-import { sendBookingConfirmationEmail } from './services/emailServices.js';
-import pool from './dbConfig.js';
+// uploadServices
+import { 
+  saveFileUpload
+ } from './services/uploadServices.js';
 
+import { 
+  sendBookingConfirmationEmail 
+} from './services/emailServices.js';
 
 
 var allowedOrigins = [
@@ -96,8 +140,10 @@ var allowedOrigins = [
 //   next();
 // });
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, parameterLimit: 50000 }));
+
+app.use('/uploads', express.static(uploadsDir));
 
 // Define routes
 app.get('/', (req, res) => {
@@ -123,25 +169,43 @@ app.get('/getVolunteerById/:volunteerId', getVolunteerById);
 
 // News routes
 app.post('/addNews', upload.single('image'), addNews);
-// Your Express route
-// app.post('/addNews', upload.single('image'), (req, res) => {
-//   console.log(req.file);  // Logs the uploaded file information
-//   console.log(req.body);  // Logs non-file form fields
-//   res.send('File upload received!');
-// });
 app.get('/news', getAllNews);
 app.get('/news/:newsId', getNewsById);
 app.delete('/news/:newsId', deleteNews);
 app.get('/getLatestNews', getLatestNews);
+app.patch('/updateNews/:newsId', updateNews);
 
+// Upload routes
+// app.post('/uploadFile', upload.single('file'), saveFileUpload);
 
+//WE KNOW THAT THE FILETYPE IS NOT BEING PULLED OVER FROM THE FRONTEND!!
+//AND YOU CAN UPLOAD TXT FILES TO GALLERY!??!? but is this becaue of the fileType not being pulled over?
+
+//check if filetype is present
+app.use((req, res, next) => {
+  console.log('req.body = ', req.body); // Log the body to see if fileType is present
+  next();
+});
+
+// Upload file route
+app.post('/uploadFile', upload.any(), (req, res) => {
+  if (req.files && req.files.length > 0) {
+    const file = req.files[0];  // Assuming single file upload for simplicity
+    const fileType = req.body.fileType;
+    console.log('File uploaded:', file);
+    console.log('FileType:', fileType);
+    res.status(201).send({ message: 'File uploaded successfully', path: file.path });
+  } else {
+    res.status(400).send({ error: 'No files were uploaded.' });
+  }
+});
 
 //ALSO NEED
-// Upload T&C's
-// Upload Group Leader Policy
-// Upload Boat Brochure
-// Upload Risk Assemessments
-// Upload HAG poster
+// Upload T&C's s 
+// Upload Group Leader Policys 
+// Upload Boat Brochures
+// Upload Risk Assemessmentss
+// Upload HAG posters
 // Upload Booking Conditions
 // Upload Insurance Certificate
 

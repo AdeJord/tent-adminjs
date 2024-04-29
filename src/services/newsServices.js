@@ -100,3 +100,35 @@ export const getLatestNews = async (request, response) => {
       });
   }
 }
+
+export const updateNews = async (request, response) => {
+  const id = parseInt(request.params.newsId);
+  const {
+    title,
+    content,
+    image_path,
+    date,
+  } = request.body;
+
+  try {
+    const query = `
+      UPDATE news
+      SET title = $1, content = $2, date = $3, image_path = $4
+      WHERE id = $5
+      RETURNING *`;
+
+    const values = [title, content, image_path, date, id];
+    const result = await pool.query(query, values);
+    if (result.rows.length === 0) {
+      response.status(404).json({ error: `News with ID ${id} not found` });
+    } else {
+      response.status(200).json({ message: `News with ID ${id} updated successfully` });
+    }
+  } catch (error) {
+    console.error("Error updating news by ID:", error.stack);
+    response.status(500).json({
+        error: "Internal Server Error. Please try again and contact Ade if the issue persists."
+    });
+}
+
+}
