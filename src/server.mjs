@@ -9,24 +9,12 @@ import multer from "multer";
 import bodyParser from 'body-parser';
 
 
+//SENDS IMAGES TO DOCS FOLDER! NEED VALIDATION!
+
 
 // Set up storage options with Multer
 
-// Old storage options
-// const storage = multer.diskStorage({
-//   destination: function(req, file, cb) {
-//       const uploadsPath = path.join(__dirname, 'uploads/');
-//       // Ensure the directory exists
-//       if (!fs.existsSync(uploadsPath)) {
-//           fs.mkdirSync(uploadsPath, { recursive: true });
-//           console.log(`Created directory at: ${uploadsPath}`);
-//       }
-//       cb(null, uploadsPath);
-//   },
-//   filename: function(req, file, cb) {
-//       cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-//   }
-// });
+
 
 const fileNameMapping = {
   groupLeaderPolicy: 'Group-Leader-Policy', //works
@@ -41,32 +29,53 @@ const fileNameMapping = {
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    let uploadsPath = path.join(__dirname, 'uploads', 'docs'); // Default to docs
+      let uploadsPath = path.join(__dirname, 'uploads', 'docs'); // Default to docs
 
-    if (file.mimetype.startsWith('image/') && req.body.fileType === 'galleryImages') {
-      uploadsPath = path.join(__dirname, 'uploads', 'gallery');
-    } else if (req.body.fileType && fileNameMapping[req.body.fileType]) {
-      // Use docs path but different naming logic in filename function
-    }
+      if (file.mimetype.startsWith('image/')) {
+          if (req.body.fileType === 'galleryImages') {
+              uploadsPath = path.join(__dirname, 'uploads', 'gallery');
+          } else if (req.body.fileType === 'newsImage') { // For news images
+              uploadsPath = path.join(__dirname, 'uploads', 'news-images');
+          }
+      }
 
-    if (!fs.existsSync(uploadsPath)) {
-      fs.mkdirSync(uploadsPath, { recursive: true });
-    }
+      // Ensure the directory exists
+      if (!fs.existsSync(uploadsPath)) {
+          fs.mkdirSync(uploadsPath, { recursive: true });
+      }
 
-    cb(null, uploadsPath);
+      cb(null, uploadsPath);
   },
   filename: function (req, file, cb) {
-    const fileType = req.body.fileType;
-    const defaultName = 'GenericFile';
-    const fileExtension = path.extname(file.originalname);
+      const directory = file.mimetype.startsWith('image/') ? path.join(__dirname, 'uploads', 'gallery')
+                        : path.join(__dirname, 'uploads', 'docs');
 
-    // Use the mapping to get the right name, or use a generic name
-    const baseName = fileNameMapping[fileType] || defaultName;
-    const fileName = `${baseName}${fileExtension}`;
-
-    cb(null, fileName);
+      if (file.mimetype.startsWith('image/')) {
+          // Directory for images, specific or general
+          const targetDir = req.body.fileType === 'newsImage' ? 'news-images' : 'gallery';
+          const imageDirectory = path.join(__dirname, 'uploads', targetDir);
+          
+          fs.readdir(imageDirectory, (err, files) => {
+              if (err) {
+                  console.error('Error reading directory:', err);
+                  cb(err);
+              } else {
+                  const fileExtension = path.extname(file.originalname);
+                  let fileNumber = files.filter(f => f.startsWith("Image")).length + 1;
+                  const fileName = `Image-${fileNumber}${fileExtension}`;
+                  cb(null, fileName);
+              }
+          });
+      } else {
+          // PDFs or other document types
+          const fileExtension = path.extname(file.originalname);
+          let baseName = req.body.fileType.replace(/[^a-zA-Z0-9]/g, '-');
+          const fileName = `${baseName}${fileExtension}`;
+          cb(null, fileName);
+      }
   }
 });
+
 
 const upload = multer({ storage: storage });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -143,6 +152,9 @@ var allowedOrigins = [
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, parameterLimit: 50000 }));
 
+app.use('/uploads/docs', express.static(path.join(__dirname, 'uploads', 'docs')));
+
+// make the uploads directory available to the public
 app.use('/uploads', express.static(uploadsDir));
 
 // Define routes
@@ -175,15 +187,10 @@ app.delete('/news/:newsId', deleteNews);
 app.get('/getLatestNews', getLatestNews);
 app.patch('/updateNews/:newsId', updateNews);
 
-// Upload routes
-// app.post('/uploadFile', upload.single('file'), saveFileUpload);
-
-//WE KNOW THAT THE FILETYPE IS NOT BEING PULLED OVER FROM THE FRONTEND!!
-//AND YOU CAN UPLOAD TXT FILES TO GALLERY!??!? but is this becaue of the fileType not being pulled over?
-
 //check if filetype is present
 app.use((req, res, next) => {
-  console.log('req.body = ', req.body); // Log the body to see if fileType is present
+  // console.log('req.body = ', req.body); // Log the body to see if fileType is present
+  // seems its not present?!?!
   next();
 });
 
@@ -199,6 +206,7 @@ app.post('/uploadFile', upload.any(), (req, res) => {
     res.status(400).send({ error: 'No files were uploaded.' });
   }
 });
+
 
 //ALSO NEED
 // Upload T&C's s 
