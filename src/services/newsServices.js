@@ -1,4 +1,5 @@
 import pool from "../dbConfig.js";
+import path from "path";
 
 
 export const addNews = async (request, response) => {
@@ -15,7 +16,8 @@ export const addNews = async (request, response) => {
   console.log("Image Info:", image);
 
   try {
-    const imagePath = image ? `/uploads/${image.filename}` : null; // Store the web accessible path
+    // Correctly format the image path using path.join
+    const imagePath = image ? path.join('/var/www/uploads/news-images', image.filename) : null; // Store the web accessible path
     const query = `
       INSERT INTO news
       (title, content, image_path, date)
@@ -130,5 +132,4 @@ export const updateNews = async (request, response) => {
         error: "Internal Server Error. Please try again and contact Ade if the issue persists."
     });
 }
-
 }

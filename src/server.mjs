@@ -12,10 +12,7 @@ import bodyParser from 'body-parser';
 //SENDS IMAGES TO DOCS FOLDER! NEED VALIDATION!
 
 
-// Set up storage options with Multer
-
-
-
+// Define a mapping of file types to file names
 const fileNameMapping = {
   groupLeaderPolicy: 'Group-Leader-Policy', //works
   TCs: 'Terms-and-Conditions', //works
@@ -26,20 +23,18 @@ const fileNameMapping = {
   insuranceCertificate: 'Insurance-Certificate',//works
 };
 
-
+// Set up storage options with Multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-      let uploadsPath = path.join(__dirname, 'uploads', 'docs'); // Default to docs
-
-      if (file.mimetype.startsWith('image/')) {
-          if (req.body.fileType === 'galleryImages') {
-              uploadsPath = path.join(__dirname, 'uploads', 'gallery');
-          } else if (req.body.fileType === 'newsImage') { // For news images
-              uploadsPath = path.join(__dirname, 'uploads', 'news-images');
-          }
+      let uploadsPath;
+      if (file.mimetype.startsWith('image/') && req.body.fileType === 'newsImage') {
+          uploadsPath = '/var/www/uploads/news-images'; // Correct directory
+      } else if (file.mimetype.startsWith('image/') && req.body.fileType === 'galleryImages') {
+          uploadsPath = '/var/www/uploads/gallery'; // Adjust if needed
+      } else {
+          uploadsPath = '/var/www/uploads/docs'; // Default for other files
       }
 
-      // Ensure the directory exists
       if (!fs.existsSync(uploadsPath)) {
           fs.mkdirSync(uploadsPath, { recursive: true });
       }
@@ -47,35 +42,9 @@ const storage = multer.diskStorage({
       cb(null, uploadsPath);
   },
   filename: function (req, file, cb) {
-      const directory = file.mimetype.startsWith('image/') ? path.join(__dirname, 'uploads', 'gallery')
-                        : path.join(__dirname, 'uploads', 'docs');
-
-      if (file.mimetype.startsWith('image/')) {
-          // Directory for images, specific or general
-          const targetDir = req.body.fileType === 'newsImage' ? 'news-images' : 'gallery';
-          const imageDirectory = path.join(__dirname, 'uploads', targetDir);
-          
-          fs.readdir(imageDirectory, (err, files) => {
-              if (err) {
-                  console.error('Error reading directory:', err);
-                  cb(err);
-              } else {
-                  const fileExtension = path.extname(file.originalname);
-                  let fileNumber = files.filter(f => f.startsWith("Image")).length + 1;
-                  const fileName = `Image-${fileNumber}${fileExtension}`;
-                  cb(null, fileName);
-              }
-          });
-      } else {
-          // PDFs or other document types
-          const fileExtension = path.extname(file.originalname);
-          let baseName = req.body.fileType.replace(/[^a-zA-Z0-9]/g, '-');
-          const fileName = `${baseName}${fileExtension}`;
-          cb(null, fileName);
-      }
+      cb(null, file.originalname); // Use the original file name
   }
 });
-
 
 const upload = multer({ storage: storage });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -153,6 +122,9 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, parameterLimit: 50000 }));
 
 app.use('/uploads/docs', express.static(path.join(__dirname, 'uploads', 'docs')));
+app.use('/uploads/news-images', express.static('/var/www/uploads/news-images'));
+app.use('/uploads/gallery', express.static('/var/www/uploads/gallery'));
+
 
 // make the uploads directory available to the public
 app.use('/uploads', express.static(uploadsDir));
@@ -226,99 +198,3 @@ app.listen(port, () => {
 });
 
 
-// OLD SERVER CODE 
-// import dotenv from 'dotenv';
-// import https from 'https';
-// import { fileURLToPath } from 'url';
-// import { dirname } from 'path';
-// import http from 'http';
-// import fs from 'fs';
-// import express from 'express';
-// import cors from 'cors'
-// import bodyParser from 'body-parser';
-// import { 
-//   getAllBookings,
-//   createBooking,
-//   updateBooking,
-//   deleteBooking,
-//   getBookingById,
-//   getAllDates
-
-// } from './services/bookingServices.js';
-
-// dotenv.config();
-
-// import pool from './dbConfig.js'
-
-// // Get the file URL for the current module
-// const __filename = fileURLToPath(import.meta.url);
-// // Get the directory name from the file URL
-// const __dirname = dirname(__filename);
-
-// // Convert the database password to a string
-// const password = process.env.DB_PASSWORD; // Convert password to a string
-
-
-
-// const app = express();
-// const port = 3000;
-
-// var allowedOrigins = [
-//     '*', // Allow from anywhere for now
-//     'https://tent-admin2.netlify.app',
-//     'http://localhost:3000',
-//     'https://tent-admin.netlify.app',
-//     'https://tent-site2.netlify.app'
-//   ];
-
-// // Set up CORS middleware
-// app.use(
-//     cors({
-//       origin: function (origin, callback) {
-//         // Allow requests with no origin (like mobile apps, curl requests)
-//         if (!origin) return callback(null, true);
-  
-//         // Only allow origins from the allowedOrigins list
-//         if (allowedOrigins.indexOf(origin) !== -1) {
-//           callback(null, true);
-//         } else {
-//           var msg = 'The CORS policy for this site does not ' +
-//                     'allow access from the specified Origin.';
-//           return callback(new Error(msg), false);
-//         }
-//       },
-//       credentials: true,
-//     })
-//   );// Set up body-parser middleware to handle JSON and URL-encoded bodies
-//   app.use(bodyParser.json());
-//   app.use(bodyParser.urlencoded({ extended: true }));
-
-//   app.get('/', (req, res) => {
-//     res.send('Application works!');
-//   });
-
-//   //OTHER ROUTES HERE
-// app.get('/bookings', getAllBookings);// working on postman, locally and from adejord
-// app.get('/dates', getAllDates);// working on postman, locally and from adejord
-// app.post('/createBooking', createBooking);
-// app.put('/updateBooking/:id', updateBooking);
-// app.delete('/deleteBooking/:id', deleteBooking);
-// app.get('/getBookingById/:id', getBookingById);
-
-
-// // Load SSL/TLS certificate and private key
-// // const privateKey = fs.readFileSync('src/privkey.pem', 'utf8');
-// // const certificate = fs.readFileSync('src/fullchain.pem', 'utf8');
-// const privateKey = fs.readFileSync(`${__dirname}/privkey.pem`, 'utf8');
-// const certificate = fs.readFileSync(`${__dirname}/fullchain.pem`, 'utf8');
-
-// const credentials = { key: privateKey, cert: certificate };
-
-// // Create HTTPS server
-// // const httpsServer = https.createServer(credentials, app);
-
-
-
-// app.listen(port, () => {
-//   console.log(`Server running on port ${port}`);
-// });
