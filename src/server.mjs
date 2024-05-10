@@ -14,13 +14,13 @@ import bodyParser from 'body-parser';
 
 // Define a mapping of file types to file names
 const fileNameMapping = {
-  groupLeaderPolicy: 'Group-Leader-Policy', //works
-  TCs: 'Terms-and-Conditions', //works
-  boatBrochure: 'Boat-Brochure',//works
-  riskAssessments: 'Risk-Assessment',//works
-  HagPoster: 'HAG-Poster',//works
-  bookingConditions: 'Booking-Conditions',//works
-  insuranceCertificate: 'Insurance-Certificate',//works
+  groupLeaderPolicy: 'Group-Leader-Policy',
+  TCs: 'Terms-and-Conditions', // checked and working
+  boatBrochure: 'Boat-Brochure',
+  riskAssessments: 'Risk-Assessment', // checked and working
+  HagPoster: 'HAG-Poster',
+  bookingConditions: 'Booking-Conditions',
+  insuranceCertificate: 'Insurance-Certificate',  // checked and working
 };
 
 // Set up storage options with Multer
@@ -41,11 +41,18 @@ const storage = multer.diskStorage({
 
       cb(null, uploadsPath);
   },
+  // Renaming the file works
   filename: function (req, file, cb) {
-      cb(null, file.originalname); // Use the original file name
+      // Get the desired new name from the mapping, if it exists, otherwise default to the original name
+      const newName = fileNameMapping[req.body.fileType];
+      if (newName) {
+          const extension = file.originalname.split('.').pop(); // Get file extension from original file name
+          cb(null, `${newName}.${extension}`);
+      } else {
+          cb(null, file.originalname); // Fallback to original file name if not specified in mapping
+      }
   }
 });
-
 const upload = multer({ storage: storage });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -108,15 +115,6 @@ var allowedOrigins = [
   'https://tent-admin.netlify.app',
   'https://tent-site2.netlify.app'
 ];
-
-// app.use((req, res, next) => {
-//   const origin = req.headers.origin;
-//   if (allowedOrigins.includes(origin)) {
-//     res.setHeader('Access-Control-Allow-Origin', origin);
-//   }
-//   res.setHeader('Access-Control-Allow-Credentials', 'true');
-//   next();
-// });
 
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, parameterLimit: 50000 }));
