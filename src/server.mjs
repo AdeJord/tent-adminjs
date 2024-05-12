@@ -7,7 +7,9 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import multer from "multer";
 import bodyParser from 'body-parser';
-
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import pool from './dbConfig.js';
 
 //SENDS IMAGES TO DOCS FOLDER! NEED VALIDATION!
 
@@ -56,6 +58,19 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, 'uploads');
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
 
 
 
@@ -176,6 +191,46 @@ app.post('/uploadFile', upload.any(), (req, res) => {
     res.status(400).send({ error: 'No files were uploaded.' });
   }
 });
+
+//Registration endpoint. 
+app.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);  // Salt rounds = 10
+  try {
+    const result = await pool.query(
+      'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username',
+      [username, hashedPassword]
+    );
+    res.status(201).send(result.rows[0]);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to register user' });
+    console.error('Failed to register user:', error);
+  }
+});
+
+//Login endpoint
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (result.rows.length > 0) {
+      const isValid = await bcrypt.compare(password, result.rows[0].password);
+      if (isValid) {
+        const token = jwt.sign({ userId: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.send({ token });
+      } else {
+        res.status(401).send({ error: 'Invalid credentials' });
+      }
+    } else {
+      res.status(404).send({ error: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to login' });
+    console.error('Login error:', error);
+  }
+});
+
+
 
 
 //ALSO NEED
