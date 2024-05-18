@@ -106,13 +106,17 @@ export const updateVolunteer = async (request, response) => {
 
         const result = await pool.query(query, values);
 
-        console.log(`Volunteer updated with ID: ${result.rows[0].volunteerId}`);
-        response.status(201).json({ message: `Volunteer updated with ID: ${result.rows[0].volunteerId}` });
+        if (result.rows.length === 0) {
+            return response.status(404).json({ message: "No volunteer found with the given ID.. FROM GPT" });
+        }
+
+        console.log(`Volunteer updated with ID: ${result.rows[0].id}`);
+        response.status(200).json({ message: `Volunteer updated with ID: ${result.rows[0].id}`, volunteer: result.rows[0] });
     } catch (error) {
         console.error("Error updating volunteer:", error);
-        response.status(500).json({ error: "Internal Server Error try again and call Ade if not working" });
+        response.status(500).json({ error: "Internal Server Error. Please try again or contact support." });
     }
-}
+};
 
 export const deleteVolunteer = async (request, response) => {
     const { volunteerId } = request.params;

@@ -66,7 +66,7 @@ export const createBooking = async (request, response) => {
     const result = await pool.query(query, values);
 
     console.log(`Booking added with ID: ${result.rows[0].id} in ${bookingMonth}`);
-    response.status(201).json({ message: `Booking added with ID: ${result.rows[0].id}` });
+    response.status(201).json({ message: `Booking added with ID: ${result.rows[0].id}`, booking: result.rows[0] });
   } catch (error) {
     console.error("Error creating booking:", error);
     response.status(500).json({ error: "Internal Server Error. Please try again or contact support." });
@@ -74,15 +74,15 @@ export const createBooking = async (request, response) => {
 };
 
 export const getAllBookings = async (req, res) => {
-    try {
-      const results = await pool.query("SELECT * FROM bookings ORDER BY id ASC");
-      res.status(200).json(results.rows);
-    } catch (error) {
-      console.error("Error getting all bookings:", error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  };
-  
+  try {
+    const results = await pool.query("SELECT * FROM bookings ORDER BY id ASC");
+    res.status(200).json(results.rows);
+  } catch (error) {
+    console.error("Error getting all bookings:", error);
+    res.status(500).json({ error: "Internal Server Error. Please try again or contact support." });
+  }
+};
+
 
 export const updateBooking = async (request, response) => {
   const {
@@ -104,6 +104,9 @@ export const updateBooking = async (request, response) => {
     notes,
     terms_and_conditions,
     group_leader_policy,
+    skipper,
+    crew1,
+    crew2
   } = request.body;
 
   try {
@@ -111,10 +114,31 @@ export const updateBooking = async (request, response) => {
     const bookingMonth = getMonthNameFromDate(myDate);
 
     const query = `
-            UPDATE bookings
-            SET first_name = $1, surname = $2, group_name = $3, contact_number = $4, email_address = $5, house_number = $6, street_name = $7, city = $8, postcode = $9, booking_date = $10, total_passengers = $11, wheelchair_users = $12, smoking = $13, destination = $14, lunch_arrangements = $15, notes = $16, terms_and_conditions = $17, group_leader_policy = $18, bookingMonth = $19
-            WHERE id = $20
-            RETURNING *`;
+      UPDATE bookings
+      SET first_name = $1, 
+      surname = $2, 
+      group_name = $3, 
+      contact_number = $4, 
+      email_address = $5, 
+      house_number = $6, 
+      street_name = $7, 
+      city = $8, 
+      postcode = $9, 
+      booking_date = $10, 
+      total_passengers = $11, 
+      wheelchair_users = $12, 
+      smoking = $13, 
+      destination = $14, 
+      lunch_arrangements = $15, 
+      notes = $16, 
+      terms_and_conditions = $17, 
+      group_leader_policy = $18, 
+      bookingMonth = $19, 
+      skipper = $20, 
+      crew1 = $21, 
+      crew2 = $22
+      WHERE id = $23
+      RETURNING *`;
 
     const values = [
       first_name,
@@ -136,24 +160,25 @@ export const updateBooking = async (request, response) => {
       terms_and_conditions,
       group_leader_policy,
       bookingMonth,
+      skipper,
+      crew1,
+      crew2,
       request.params.bookingId,
     ];
 
     const result = await pool.query(query, values);
 
-    console.log(
-      `Booking updated with ID: ${result.rows[0].bookingId} in ${bookingMonth}`
-    );
-    response
-      .status(201)
-      .json({ message: `Booking updated with ID: ${result.rows[0].bookingId}` });
+    if (result.rows.length === 0) {
+      return response.status(404).json({ message: "No booking found with the given ID" });
+    }
+
+    console.log(`Booking updated with ID: ${result.rows[0].id} in ${bookingMonth}`);
+    response.status(200).json({ message: `Booking updated with ID: ${result.rows[0].id}`, booking: result.rows[0] });
   } catch (error) {
     console.error("Error updating booking:", error);
-    response
-      .status(500)
-      .json({
-        error: "Internal Server Error try again and call Ade if not working",
-      });
+    response.status(500).json({
+      error: "Internal Server Error. Please try again or contact support.",
+    });
   }
 };
 
