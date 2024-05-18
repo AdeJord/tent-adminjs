@@ -4,7 +4,6 @@ import pool from '../dbConfig.js';
 import getMonthNameFromDate from "../utils/dateToMonth.js"; // Assuming this is a utility function you have
 
 export const createBooking = async (request, response) => {
-  
   const {
     first_name,
     surname,
@@ -24,21 +23,20 @@ export const createBooking = async (request, response) => {
     notes,
     terms_and_conditions,
     group_leader_policy,
+    skipper,
+    crew1,
+    crew2
   } = request.body;
-
-   // Converting total_passengers and wheelchair_users to integers
-  //  total_passengers = parseInt(total_passengers, 10);
-  //  wheelchair_users = parseInt(wheelchair_users, 10);
 
   try {
     const myDate = new Date(booking_date);
-    const bookingMonth = getMonthNameFromDate(myDate);
+    const bookingMonth = myDate.toLocaleString('default', { month: 'long' });
 
     const query = `
-            INSERT INTO bookings
-            (first_name, surname, group_name, contact_number, email_address, house_number, street_name, city, postcode, booking_date, total_passengers, wheelchair_users, smoking, destination, lunch_arrangements, notes, terms_and_conditions, group_leader_policy, bookingMonth)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-            RETURNING *`;
+      INSERT INTO bookings
+      (first_name, surname, group_name, contact_number, email_address, house_number, street_name, city, postcode, booking_date, total_passengers, wheelchair_users, smoking, destination, lunch_arrangements, notes, terms_and_conditions, group_leader_policy, bookingmonth, skipper, crew1, crew2)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+      RETURNING *`;
 
     const values = [
       first_name,
@@ -60,23 +58,18 @@ export const createBooking = async (request, response) => {
       terms_and_conditions,
       group_leader_policy,
       bookingMonth,
+      skipper,
+      crew1,
+      crew2
     ];
 
     const result = await pool.query(query, values);
 
-    console.log(
-      `Booking added with ID: ${result.rows[0].id} in ${bookingMonth}`
-    );
-    response
-      .status(201)
-      .json({ message: `Booking added with ID: ${result.rows[0].id}` });
+    console.log(`Booking added with ID: ${result.rows[0].id} in ${bookingMonth}`);
+    response.status(201).json({ message: `Booking added with ID: ${result.rows[0].id}` });
   } catch (error) {
     console.error("Error creating booking:", error);
-    response
-      .status(500)
-      .json({
-        error: "Internal Server Error try again and call Ade if not working",
-      });
+    response.status(500).json({ error: "Internal Server Error. Please try again or contact support." });
   }
 };
 

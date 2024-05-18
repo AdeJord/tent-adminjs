@@ -1,6 +1,8 @@
 // volunteerService.js
 import pool from '../dbConfig.js';
 
+
+//DO NOT NEED CREW1 CREW2 AND SKIPPER IN HERE, THESE ARE JUST OPTIONS FOR THE ROLE
 export const addVolunteers = async (request, response) => {
     const {
         first_name,
@@ -14,6 +16,16 @@ export const addVolunteers = async (request, response) => {
         role,
         notes,
     } = request.body;
+
+    console.log("Received request body:", request.body); // Log the entire request body
+    console.log("Received role:", role); // Log the role value
+
+    // Standardize role values to ensure only valid roles are inserted
+    const validRoles = ['Skipper', 'Crew1', 'Crew2', 'Admin/other'];
+    if (!validRoles.includes(role)) {
+        console.error(`Invalid role: ${role}`);
+        return response.status(400).json({ error: `Invalid role. Valid roles are 'Skipper', 'Crew1', 'Crew2', 'Admin/other'. Received: ${role}` });
+    }
 
     try {
         const query = `
@@ -41,10 +53,12 @@ export const addVolunteers = async (request, response) => {
         response.status(201).json({ message: `Volunteer added with ID: ${result.rows[0].id}` });
     } catch (error) {
         console.error("Error creating volunteer:", error);
-        response.status(500).json({ error: "Internal Server Error try again and call Ade if not working" });
+        response.status(500).json({ error: "Internal Server Error. Please try again or contact support." });
     }
-
 }
+
+
+
 
 export const getAllVolunteers = async (request, response) => {
     pool.query('SELECT * FROM volunteers ORDER BY id ASC', (error, results) => {
@@ -100,44 +114,41 @@ export const updateVolunteer = async (request, response) => {
     }
 }
 
-export const deleteVolunteer = async (request, response) => {       
+export const deleteVolunteer = async (request, response) => {
     const { volunteerId } = request.params;
 
     try {
-        const result = await pool.query('DELETE FROM volunteers WHERE id = $1', [volunteerId]); // Use 'await' to wait for the query result
-        console.log("Deleted id", volunteerId);
+        const result = await pool.query('DELETE FROM volunteers WHERE id = $1', [volunteerId]);
 
         if (result.rowCount === 0) {
-            // No rows were affected, which means the volunteer was not found.
             response.status(404).json({ message: "No volunteer found with the given ID" });
             return;
         }
 
-        console.log("result", result.rows[0]);
+        console.log(`Volunteer deleted with ID: ${volunteerId}`);
         response.status(200).json({ message: "Volunteer deleted successfully" });
     } catch (error) {
-        console.error("Error finding volunteer:", error);
-        response.status(500).json({ error: "Internal Server Error try again and call Ade if not working" });
+        console.error("Error deleting volunteer:", error);
+        response.status(500).json({ error: "Internal Server Error. Please try again or contact support." });
     }
 }
 
+
 export const getVolunteerById = async (request, response) => {
     const { volunteerId } = request.params;
-    console.log("id", volunteerId);
+
     try {
-        const result = await pool.query('SELECT * FROM volunteers WHERE id = $1', [volunteerId]); // Use 'await' to wait for the query result
+        const result = await pool.query('SELECT * FROM volunteers WHERE id = $1', [volunteerId]);
 
         if (result.rows.length === 0) {
             response.status(404).json({ message: "No volunteer found with the given ID" });
             return;
         }
 
-        console.log("result", result.rows[0]);
-        response.status(200).json(result.rows[0]); // Send only this response when a volunteer is found
-        
+        console.log("Volunteer found:", result.rows[0]);
+        response.status(200).json(result.rows[0]);
     } catch (error) {
         console.error("Error finding volunteer:", error);
-        response.status(500).json({ error: "Internal Server Error try again and call Ade if not working" });
+        response.status(500).json({ error: "Internal Server Error. Please try again or contact support." });
     }
 };
-
