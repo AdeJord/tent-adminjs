@@ -1,6 +1,5 @@
 // Initialize dotenv
 import dotenv from 'dotenv';
-dotenv.config();
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,77 +10,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from './dbConfig.js';
 
-//SENDS IMAGES TO DOCS FOLDER! NEED VALIDATION!
-
-
-// Define a mapping of file types to file names
-const fileNameMapping = {
-  groupLeaderPolicy: 'Group-Leader-Policy',
-  TCs: 'Terms-and-Conditions', // checked and working
-  boatBrochure: 'Boat-Brochure',
-  riskAssessments: 'Risk-Assessment', // checked and working
-  HagPoster: 'HAG-Poster',
-  bookingConditions: 'Booking-Conditions',
-  insuranceCertificate: 'Insurance-Certificate',  // checked and working
-};
-
-// Set up storage options with Multer
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-      let uploadsPath;
-      if (file.mimetype.startsWith('image/') && req.body.fileType === 'newsImage') {
-          uploadsPath = '/var/www/uploads/news-images'; // Correct directory
-      } else if (file.mimetype.startsWith('image/') && req.body.fileType === 'galleryImages') {
-          uploadsPath = '/var/www/uploads/gallery'; // Adjust if needed
-      } else {
-          uploadsPath = '/var/www/uploads/docs'; // Default for other files
-      }
-
-      if (!fs.existsSync(uploadsPath)) {
-          fs.mkdirSync(uploadsPath, { recursive: true });
-      }
-
-      cb(null, uploadsPath);
-  },
-  // Renaming the file works
-  filename: function (req, file, cb) {
-      // Get the desired new name from the mapping, if it exists, otherwise default to the original name
-      const newName = fileNameMapping[req.body.fileType];
-      if (newName) {
-          const extension = file.originalname.split('.').pop(); // Get file extension from original file name
-          cb(null, `${newName}.${extension}`);
-      } else {
-          cb(null, file.originalname); // Fallback to original file name if not specified in mapping
-      }
-  }
-});
-const upload = multer({ storage: storage });
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadsDir = path.join(__dirname, 'uploads');
-
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) return res.sendStatus(401);
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-};
-
-
-
-
-// Check if the uploads directory exists, and create it if it doesn't
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('Created uploads directory at:', uploadsDir);
-}
-
-const app = express();
-const port = 3000;
+dotenv.config();
 
 // Import bookingServices
 import { 
@@ -114,13 +43,93 @@ import {
 
 // uploadServices
 import { 
-  saveFileUpload
+  saveFileUpload,
  } from './services/uploadServices.js';
 
+ import {
+  getAllGalleryImages,
+  editGalleryImages,
+  getGalleryImageById,
+  // deleteGalleryImage,
+  deleteGalleryImageById,
+  addGalleryImage
+  } from './services/galleryServices.js';
+
+
+ // emailServices
 import { 
   sendBookingConfirmationEmail 
 } from './services/emailServices.js';
 
+// Define a mapping of file types to file names
+const fileNameMapping = {
+  groupLeaderPolicy: 'Group-Leader-Policy',
+  TCs: 'Terms-and-Conditions',
+  boatBrochure: 'Boat-Brochure',
+  riskAssessments: 'Risk-Assessment',
+  HagPoster: 'HAG-Poster',
+  bookingConditions: 'Booking-Conditions',
+  insuranceCertificate: 'Insurance-Certificate',
+  galleryImages: 'Gallery-Image',
+};
+
+// Set up storage options with Multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    let uploadsPath;
+    if (file.mimetype.startsWith('image/') && req.body.fileType === 'newsImage') {
+      uploadsPath = '/var/www/uploads/news-images';
+    } else if (file.mimetype.startsWith('image/') && req.body.fileType === 'galleryImages') {
+      uploadsPath = '/var/www/uploads/gallery';
+    } else {
+      uploadsPath = '/var/www/uploads/docs';
+    }
+
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    }
+
+    cb(null, uploadsPath);
+  },
+  filename: function (req, file, cb) {
+    const newName = fileNameMapping[req.body.fileType];
+    if (newName) {
+      const extension = file.originalname.split('.').pop();
+      cb(null, `${newName}-${Date.now()}.${extension}`);
+    } else {
+      cb(null, file.originalname);
+    }
+  }
+});
+
+const upload = multer({ storage: storage });
+
+
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.join(__dirname, 'uploads');
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+
+// Check if the uploads directory exists, and create it if it doesn't
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('Created uploads directory at:', uploadsDir);
+}
+
+const app = express();
+const port = 3000;
 
 var allowedOrigins = [
   'https://tent-admin2.netlify.app',
@@ -154,7 +163,6 @@ app.post('/createBooking', createBooking); //works
 app.patch('/updateBooking/:bookingId', updateBooking);
 app.delete('/deleteBooking/:bookingId', deleteBooking);
 app.get('/getBookingById/:bookingId', getBookingById);
-app.post('/sendBookingConfirmationEmail', sendBookingConfirmationEmail);
 app.get('/bookings/:bookingId', getBookingById);
 
 // Volunteer routes
@@ -172,12 +180,35 @@ app.delete('/news/:newsId', deleteNews);
 app.get('/getLatestNews', getLatestNews);
 app.patch('/updateNews/:newsId', updateNews);
 
+
+// Email routes
+app.post('/sendBookingConfirmationEmail', sendBookingConfirmationEmail);
+
+// Gallery routes
+app.post('/addGalleryImage', upload.single('image'), addGalleryImage);
+app.get('/galleryImages', getAllGalleryImages);
+//using this one i think
+app.delete('/galleryImages/:galleryImageId', deleteGalleryImageById);
+
+
+// app.delete('/galleryImages/:id', deleteGalleryImage);
+
+
+// Upload routes (for docs)
+app.post('/upload', upload.single('file'), saveFileUpload);
+
+
 //check if filetype is present
 app.use((req, res, next) => {
   // console.log('req.body = ', req.body); // Log the body to see if fileType is present
   // seems its not present?!?!
   next();
 });
+
+// app.post('addGalleryImage', upload.single('image'), (req, res) => {
+//   console.log('req.body = ', req.body); // Log the body to see if fileType is present
+//   res.send('File uploaded successfully');
+// });
 
 // Upload file route
 app.post('/uploadFile', upload.any(), (req, res) => {
@@ -192,21 +223,22 @@ app.post('/uploadFile', upload.any(), (req, res) => {
   }
 });
 
+//NO FRONT END FOR THIS
 //Registration endpoint. 
-app.post('/register', async (req, res) => {
-  const { username, password } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);  // Salt rounds = 10
-  try {
-    const result = await pool.query(
-      'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username',
-      [username, hashedPassword]
-    );
-    res.status(201).send(result.rows[0]);
-  } catch (error) {
-    res.status(500).send({ error: 'Failed to register user' });
-    console.error('Failed to register user:', error);
-  }
-});
+// app.post('/register', async (req, res) => {
+//   const { username, password } = req.body;
+//   const hashedPassword = await bcrypt.hash(password, 10);  // Salt rounds = 10
+//   try {
+//     const result = await pool.query(
+//       'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username',
+//       [username, hashedPassword]
+//     );
+//     res.status(201).send(result.rows[0]);
+//   } catch (error) {
+//     res.status(500).send({ error: 'Failed to register user' });
+//     console.error('Failed to register user:', error);
+//   }
+// });
 
 //Login endpoint
 app.post('/login', async (req, res) => {

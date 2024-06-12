@@ -111,7 +111,7 @@ export const updateBooking = async (request, response) => {
 
   try {
     const myDate = new Date(booking_date);
-    const bookingMonth = getMonthNameFromDate(myDate);
+    const bookingMonth = myDate.toLocaleString('default', { month: 'long' });
 
     const query = `
       UPDATE bookings
@@ -181,6 +181,8 @@ export const updateBooking = async (request, response) => {
     });
   }
 };
+
+
 
 export const deleteBooking = async (request, response) => {
     const { bookingId } = request.params;
