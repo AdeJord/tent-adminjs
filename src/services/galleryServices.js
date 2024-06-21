@@ -49,7 +49,7 @@ export const addGalleryImage = async (request, response) => {
         file_path: `${BASE_URL}/${path.basename(row.file_path)}`,
       }));
   
-      console.log("Processed images:", images);
+      // console.log("Processed images:", images);
       response.status(200).json(images);
     } catch (error) {
       console.error("Error fetching gallery images:", error);

@@ -1,18 +1,16 @@
-// Initialize dotenv
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import express from 'express';
-import multer from "multer";
+import dotenv from 'dotenv';
+import multer from 'multer';
 import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import pool from './dbConfig.js';
+import pricingRoutes from './services/pricingRoutes.js';
+import router from './services/pricingRoutes.js';
 
-dotenv.config();
-
-// Import bookingServices
 import { 
   getAllBookings, 
   createBooking, 
@@ -22,7 +20,6 @@ import {
   getAllDates,
 } from './services/bookingServices.js';
 
-// import volunteerServices
 import {
   addVolunteers,
   getAllVolunteers,
@@ -31,7 +28,6 @@ import {
   getVolunteerById,
 } from './services/volunteerServices.js';
 
-// import newsServices
 import {
   addNews,
   getAllNews,
@@ -41,27 +37,33 @@ import {
   updateNews
 } from './services/newsServices.js';
 
-// uploadServices
 import { 
   saveFileUpload,
  } from './services/uploadServices.js';
 
- import {
+import {
   getAllGalleryImages,
   editGalleryImages,
   getGalleryImageById,
-  // deleteGalleryImage,
   deleteGalleryImageById,
   addGalleryImage
-  } from './services/galleryServices.js';
+} from './services/galleryServices.js';
 
+import {
+  getAllPrices,
+  updatePrices
+} from './services/pricingServices.js';
 
- // emailServices
+// import {
+//   pricingRoutes
+// } from './services/pricingRoutes.js';
+
 import { 
   sendBookingConfirmationEmail 
 } from './services/emailServices.js';
 
-// Define a mapping of file types to file names
+dotenv.config();
+
 const fileNameMapping = {
   groupLeaderPolicy: 'Group-Leader-Policy',
   TCs: 'Terms-and-Conditions',
@@ -73,7 +75,6 @@ const fileNameMapping = {
   galleryImages: 'Gallery-Image',
 };
 
-// Set up storage options with Multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     let uploadsPath;
@@ -104,8 +105,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, 'uploads');
 
@@ -121,8 +120,6 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-
-// Check if the uploads directory exists, and create it if it doesn't
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log('Created uploads directory at:', uploadsDir);
@@ -131,7 +128,7 @@ if (!fs.existsSync(uploadsDir)) {
 const app = express();
 const port = 3000;
 
-var allowedOrigins = [
+const allowedOrigins = [
   'https://tent-admin2.netlify.app',
   'http://localhost:3000',
   'http://localhost:3001',
@@ -140,39 +137,37 @@ var allowedOrigins = [
   'https://tent-site2.netlify.app'
 ];
 
+router.get('/prices', getAllPrices); // GET request for getting all prices
+router.patch('/prices/:id', updatePrices); // PATCH request for updating prices
+
 app.use(bodyParser.json({ limit: '50mb' }));
+app.use('/api', pricingRoutes);
 app.use(bodyParser.urlencoded({ extended: true, parameterLimit: 50000 }));
 
 app.use('/uploads/docs', express.static(path.join(__dirname, 'uploads', 'docs')));
 app.use('/uploads/news-images', express.static('/var/www/uploads/news-images'));
 app.use('/uploads/gallery', express.static('/var/www/uploads/gallery'));
 
-
-// make the uploads directory available to the public
 app.use('/uploads', express.static(uploadsDir));
 
-// Define routes
 app.get('/', (req, res) => {
   res.send('Application works!');
 });
 
-// Booking routes...
-app.get('/bookings', getAllBookings); //works
-app.get('/dates', getAllDates); //works
-app.post('/createBooking', createBooking); //works 
+app.get('/bookings', getAllBookings);
+app.get('/dates', getAllDates);
+app.post('/createBooking', createBooking);
 app.patch('/updateBooking/:bookingId', updateBooking);
 app.delete('/deleteBooking/:bookingId', deleteBooking);
 app.get('/getBookingById/:bookingId', getBookingById);
 app.get('/bookings/:bookingId', getBookingById);
 
-// Volunteer routes
 app.post('/addVolunteers', addVolunteers);
 app.get('/volunteers', getAllVolunteers);
 app.patch('/updateVolunteer/:volunteerId', updateVolunteer);
 app.delete('/deleteVolunteer/:volunteerId', deleteVolunteer);
 app.get('/getVolunteerById/:volunteerId', getVolunteerById);
 
-// News routes
 app.post('/addNews', upload.single('image'), addNews);
 app.get('/news', getAllNews);
 app.get('/news/:newsId', getNewsById);
@@ -180,40 +175,24 @@ app.delete('/news/:newsId', deleteNews);
 app.get('/getLatestNews', getLatestNews);
 app.patch('/updateNews/:newsId', updateNews);
 
-
-// Email routes
 app.post('/sendBookingConfirmationEmail', sendBookingConfirmationEmail);
 
-// Gallery routes
 app.post('/addGalleryImage', upload.single('image'), addGalleryImage);
 app.get('/galleryImages', getAllGalleryImages);
-//using this one i think
 app.delete('/galleryImages/:galleryImageId', deleteGalleryImageById);
 
+app.get('/prices', getAllPrices);
+app.patch('/updatePrices/:id', updatePrices);
 
-// app.delete('/galleryImages/:id', deleteGalleryImage);
-
-
-// Upload routes (for docs)
 app.post('/upload', upload.single('file'), saveFileUpload);
 
-
-//check if filetype is present
 app.use((req, res, next) => {
-  // console.log('req.body = ', req.body); // Log the body to see if fileType is present
-  // seems its not present?!?!
   next();
 });
 
-// app.post('addGalleryImage', upload.single('image'), (req, res) => {
-//   console.log('req.body = ', req.body); // Log the body to see if fileType is present
-//   res.send('File uploaded successfully');
-// });
-
-// Upload file route
 app.post('/uploadFile', upload.any(), (req, res) => {
   if (req.files && req.files.length > 0) {
-    const file = req.files[0];  // Assuming single file upload for simplicity
+    const file = req.files[0];
     const fileType = req.body.fileType;
     console.log('File uploaded:', file);
     console.log('FileType:', fileType);
@@ -223,24 +202,6 @@ app.post('/uploadFile', upload.any(), (req, res) => {
   }
 });
 
-//NO FRONT END FOR THIS
-//Registration endpoint. 
-// app.post('/register', async (req, res) => {
-//   const { username, password } = req.body;
-//   const hashedPassword = await bcrypt.hash(password, 10);  // Salt rounds = 10
-//   try {
-//     const result = await pool.query(
-//       'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username',
-//       [username, hashedPassword]
-//     );
-//     res.status(201).send(result.rows[0]);
-//   } catch (error) {
-//     res.status(500).send({ error: 'Failed to register user' });
-//     console.error('Failed to register user:', error);
-//   }
-// });
-
-//Login endpoint
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -262,24 +223,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
-
-
-//ALSO NEED
-// Upload T&C's s 
-// Upload Group Leader Policys 
-// Upload Boat Brochures
-// Upload Risk Assemessmentss
-// Upload HAG posters
-// Upload Booking Conditions
-// Upload Insurance Certificate
-
-
-
-
-// Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
-
