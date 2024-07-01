@@ -59,7 +59,8 @@ import {
 // } from './services/pricingRoutes.js';
 
 import { 
-  sendBookingConfirmationEmail 
+  sendBookingConfirmationEmail,
+  sendAllBookingsToVolunteersGDPRCompliant 
 } from './services/emailServices.js';
 
 dotenv.config();
@@ -128,15 +129,16 @@ if (!fs.existsSync(uploadsDir)) {
 const app = express();
 const port = 3000;
 
-const allowedOrigins = [
-  'https://tent-admin2.netlify.app',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'https://tent-admin.netlify.app',
-  'https://tent-site2.netlify.app'
-];
+// const allowedOrigins = [
+//   'https://tent-admin2.netlify.app',
+//   'http://localhost:3000',
+//   'http://localhost:3001',
+//   'http://localhost:3002',
+//   'https://tent-admin.netlify.app',
+//   'https://tent-site2.netlify.app'
+// ];
 
+// Prices routes
 router.get('/prices', getAllPrices); // GET request for getting all prices
 router.patch('/prices/:id', updatePrices); // PATCH request for updating prices
 
@@ -154,6 +156,7 @@ app.get('/', (req, res) => {
   res.send('Application works!');
 });
 
+// Booking Routes
 app.get('/bookings', getAllBookings);
 app.get('/dates', getAllDates);
 app.post('/createBooking', createBooking);
@@ -162,12 +165,14 @@ app.delete('/deleteBooking/:bookingId', deleteBooking);
 app.get('/getBookingById/:bookingId', getBookingById);
 app.get('/bookings/:bookingId', getBookingById);
 
+// Volunteer Routes
 app.post('/addVolunteers', addVolunteers);
 app.get('/volunteers', getAllVolunteers);
 app.patch('/updateVolunteer/:volunteerId', updateVolunteer);
 app.delete('/deleteVolunteer/:volunteerId', deleteVolunteer);
 app.get('/getVolunteerById/:volunteerId', getVolunteerById);
 
+// News Routes
 app.post('/addNews', upload.single('image'), addNews);
 app.get('/news', getAllNews);
 app.get('/news/:newsId', getNewsById);
@@ -175,12 +180,16 @@ app.delete('/news/:newsId', deleteNews);
 app.get('/getLatestNews', getLatestNews);
 app.patch('/updateNews/:newsId', updateNews);
 
-app.post('/sendBookingConfirmationEmail', sendBookingConfirmationEmail);
+// Email Routes
+app.post('/send-booking-confirmation', sendBookingConfirmationEmail);
+app.post('/send-all-bookings-GDPR', sendAllBookingsToVolunteersGDPRCompliant);
 
+// Gallery Routes
 app.post('/addGalleryImage', upload.single('image'), addGalleryImage);
 app.get('/galleryImages', getAllGalleryImages);
 app.delete('/galleryImages/:galleryImageId', deleteGalleryImageById);
 
+// Prices Routes
 app.get('/prices', getAllPrices);
 app.patch('/updatePrices/:id', updatePrices);
 
